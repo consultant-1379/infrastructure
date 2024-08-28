@@ -1,0 +1,256 @@
+{% extends "dmt/base.html" %}
+{% load setVar %}
+
+{% block title %}DMT Management Servers{% endblock %}
+{% block content %}
+
+<script language="JavaScript">
+    function checkAction(msg, link) {
+        var go = confirm(msg);
+        if (go == true) {
+            window.location = link;
+        }
+    }
+</script>
+
+<div id="generic-title">
+    <div id="text-container">Management Servers
+        <a class="img" href="/dmt/addmgtsvr/product/Management/" title="Register A Management Server"><img src="/static/images/create.png"/></a>
+        <a class="img" href="http://confluence-oss.lmera.ericsson.se/display/CIOSS/Register+A+Management+Server" title="Management Server Help" target="_blank"><img src="/static/images/question.png"/></a>
+    </div>
+</div>
+<div class="generic-text">
+    <br>
+    <p><b>For Information on Deployments <a href="http://confluence-oss.lmera.ericsson.se/display/CIOSS/Deployments" target="_blank">Visit This Confluence Page</a></b></p>
+    <table id="managementServer-table">
+        {% if mgtservers %}
+            <tr>
+                <th>Name</th>
+                <th>Product</th>
+                <th>Description</th>
+                <th>Options</th>
+            </tr>
+            {% for item in mgtservers %}
+                <tr>
+                    {% if item.server.hostname == selected %}
+                        <td class="selected">
+                    {% else %}
+                        <td>
+                    {% endif %}
+                        <a href="/dmt/mgtsvrs/{{ item.server.hostname }}/">{{ item.server.hostname }}</a></td>
+                    {% if item.server.hostname == selected %}
+                        <td class="selected">
+                    {% else %}
+                        <td>
+                    {% endif %}
+                        {{ item.product.name }}
+                    </td>
+                    {% if item.server.hostname == selected %}
+                        <td class="selected">
+                    {% else %}
+                        <td>
+                    {% endif %}
+                    {{ item.description }}
+                    </td>
+                    <td>
+                        <a class="img" href="/dmt/editmgtsvr/?hostname={{ item.server.hostname }}" title="Edit Management Server {{ item.server.hostname }}"><img src="/static/images/edit.png"/></a>       
+                        <a class="img" href="#" 
+                            onClick="checkAction('Do you really want to Delete {{ item.server.hostname }}?', '/dmt/deletemgtsvr/?hostname={{ item.server.hostname}}')" 
+                            title="Delete Management Server {{ item.server.hostname }} "><img src="/static/images/delete.png"/></a>
+                    </td>
+                </tr>
+            {% endfor %}
+            {% else %}
+                <tr>No Management Servers</tr>
+            {% endif %}
+     </table>
+<div id="managementServer-details">
+{% if selected %}
+    <h3>Management Server Details for {{ selected }}
+        <a class="img" href="#" 
+            onClick="checkAction('Do you really want to Delete {{ selected }}?', '/dmt/deletemgtsvr/?hostname={{ selected }}')" 
+            title="Delete Management Server {{ selected }} "><img src="/static/images/delete.png"/></a>
+        <a class="img" href="/dmt/editmgtsvr/?hostname={{ selected}}" title="Edit Management Server {{ selected }}"><img src="/static/images/edit.png"></a>       
+    </h3>
+    <br>
+    {% if mgtserver %}
+        <table id="managementServerClick-table">
+            <tr><th>Domain Name:</th><td>{{ mgtserver.server.domain_name }}</td></tr>
+            <tr><th>HW Type:</th><td>{{ mgtserver.server.hardware_type }}</td></tr>
+            <tr><th>DNS Server:</th><td>{{ mgtserver.server.dns_server }}</td></tr>
+            {% for n in nics %}
+                {% if n.server.hostname == mgtserver.server.hostname %}
+                    <tr><th>Primary NIC:</th><td>{{ n.mac_address }}</td></tr>
+                    {% if mgtserver.server.hardware_type == "blade" %}
+                            {% for blade in bladeExtraDetails %}
+                                <tr><th>Serial Number:</th><td>{{ blade.serial_number }}</td></tr> 
+                                <tr><th>Profile Name:</th><td>{{ blade.profile_name }}</td></tr>
+                                <tr><th>Enclosure:</th><td>{{ blade.enclosure.hostname }}</td></tr>
+                                <tr><th>Vlan Tag:</th><td>{{ blade.vlan_tag }}</td></tr>
+                            {% endfor %}
+                    {% endif %}
+                    {% for ip in ipaddrs %}
+                        {% if ip.nic.mac_address == n.mac_address %}
+                            {% if ip.ipType == "host" %}
+                                <tr><th>IPv4 Host Address:</th><td>{{ ip.address }}</td></tr>
+                                {% if "/" in ip.bitmask %}
+                                    <tr><th>IPv4 Host Bitmask:</th><td>{{ ip.bitmask }}</td></tr>
+                                {% else %}
+                                    <tr><th>IPv4 Host Bitmask:</th><td>/{{ ip.bitmask }}</td></tr>
+                                {% endif %}    
+                                <tr><th>IPv4 Host Gateway:</th><td>{{ ip.gateway_address }}</td></tr>
+                            {% endif %} 
+                        {% endif %}
+                    {% endfor %}
+                    {% for ip in ipaddrs %}
+                        {% if ip.nic.mac_address == n.mac_address %}
+                            {% if ip.ipType == "other" %}
+                                <tr><th>IPv4 Bridge Address:</th><td>{{ ip.address }}</td></tr>
+                                {% if "/" in ip.bitmask %}
+                                    <tr><th>IPv4 Bridge Bitmask:</th><td>{{ ip.bitmask }}</td></tr>
+                                {% else %}    
+                                    <tr><th>IPv4 Bridge Bitmask:</th><td>/{{ ip.bitmask }}</td></tr>
+                                {% endif %}    
+                                <tr><th>IPv4 Bridge Gateway:</th><td>{{ ip.gateway_address }}</td></tr>
+                            {% endif %} 
+                        {% endif %}
+                    {% endfor %}
+                    {% for ip in ipaddrs %}
+                        {% if ip.ipv6_address != NONE %}
+                            <tr><th>IPv6 Host Address:</th><td>{{ ip.ipv6_address }}</td></tr>
+                            {% set fndipv6 = 0 %}
+                        {% endif %}
+                        {% if ip.ipv6_bitmask != NONE and ip.ipv6_bitmask != "" and "/" in ip.ipv6_bitmask %}
+                            <tr><th>IPv6 Host Bitmask:</th><td>{{ ip.ipv6_bitmask }}</td></tr>
+                            {% set fndipv6bitmask = 0 %}
+                        {% else %}{% if ip.ipv6_bitmask != NONE and ip.ipv6_bitmask != "" %}
+                            <tr><th>IPv6 Host Bitmask:</th><td>/{{ ip.ipv6_bitmask }}</td></tr>
+                            {% set fndipv6bitmask = 0 %}   
+                        {% endif %}{% endif %}    
+                        {% if ip.ipv6_gateway != NONE and ip.ipv6_gateway != "" %}
+                            <tr><th>IPv6 Host Gateway:</th><td>{{ ip.ipv6_gateway }}</td></tr>
+                            {% set fndipv6gateway = 0 %}
+                        {% endif %}
+                    {% endfor %}
+                    {% if fndipv6 != 0 %}
+                        <tr><th>IPv6 Host Address:</th><td>Not Assigned</td></tr>
+                    {% endif %}
+                    {% if fndipv6bitmask != 0 %}
+                        <tr><th>IPv6 Host Bitmask:</th><td>Not Assigned</td></tr>
+                    {% endif %}
+                    {% if fndipv6gateway != 0 %}
+                        <tr><th>IPv6 Host Gateway:</th><td>Not Assigned</td></tr>
+                    {% endif %}
+
+                    {% for ip in ipaddrs %}
+                        {% if ip.nic.mac_address == n.mac_address %}
+                            {% if ip.ipType == "storage" %}
+                                <tr><th>IPv4 Storage Vlan Address :</th><td>{{ ip.address }}</td></tr>
+                                {% if "/" in ip.bitmask %}
+                                    <tr><th>IPv4 Storage Vlan Bitmask :</th><td>{{ ip.bitmask }}</td></tr>
+                                {% else %}    
+                                    <tr><th>IPv4 Storage Vlan Bitmask :</th><td>/{{ ip.bitmask }}</td></tr>
+                                {% endif %}    
+                                {% set fndStg = 0 %}
+                                {% for vlanIp in vlanIpMap %}
+                                    {% if ip.id == vlanIp.ipMap.id %}
+                                        <tr><th>Storage Vlan Tag :</th><td>{{ vlanIp.vlanTag }}</td></tr>
+                                        {% set fndVlanStr = 0 %}
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+                    {% if fndVlanStr != 0 and fndStg == 0 %}
+                        <tr><th>Storage Vlan Tag :</th><td>Not Assigned</td></tr>
+                    {% endif %}
+
+                    {% for ip in ipaddrs %}
+                        {% if ip.nic.mac_address == n.mac_address %}
+                            {% if ip.ipType == "backup" %}
+                                <tr><th>IPv4 Backup Vlan Address :</th><td>{{ ip.address }}</td></tr>
+                                {% if "/" in ip.bitmask %}
+                                    <tr><th>IPv4 Backup Vlan Bitmask :</th><td>{{ ip.bitmask }}</td></tr>
+                                {% else %}
+                                    <tr><th>IPv4 Backup Vlan Bitmask :</th><td>/{{ ip.bitmask }}</td></tr>
+                                {% endif %}
+                                {% set fndBkp = 0 %}
+                                {% for vlanIp in vlanIpMap %}
+                                    {% if ip.id == vlanIp.ipMap.id %}
+                                        <tr><th>Backup Vlan Tag :</th><td>{{ vlanIp.vlanTag }}</td></tr>
+                                        {% set fndVlanBckUp = 0 %}
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+                    {% for ip in ipaddrs %}
+                        {% if ip.nic.mac_address == n.mac_address %}
+                            {% if ip.ipType == "multicast" %}
+                                <tr><th>IPv4 Multicast Vlan Address :</th><td>{{ ip.address }}</td></tr>
+                                {% if "/" in ip.bitmask %}
+                                    <tr><th>IPv4 Multicast Vlan  Bitmask :</th><td>{{ ip.bitmask }}</td></tr>
+                                {% else %}
+                                    <tr><th>IPv4 Multicast Vlan  Bitmask :</th><td>/{{ ip.bitmask }}</td></tr>
+                                {% endif %}
+                                {% set fndMulticast = 0 %}
+                                {% for vlanIp in vlanIpMap %}
+                                    {% if ip.id == vlanIp.ipMap.id %}
+                                        <tr><th>Multicast Vlan Tag :</th><td>{{ vlanIp.vlanTag }}</td></tr>
+                                        {% set fndVlanMulticast = 0 %}
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+                    {% if fndStg != 0 %}
+                        <tr><th>IPv4 Storage Vlan Address :</th><td>Not Assigned</td></tr>
+                        <tr><th>IPv4 Storage Vlan Bitmask :</th><td>Not Assigned</td></tr>
+                    {% endif %}
+                    {% if fndVlanStr != 0 and fndStg != 0 %}
+                        <tr><th>Storage Vlan Tag :</th><td>Not Assigned</td></tr>
+                    {% endif %}
+                    {% if fndBkp != 0 %}
+                        <tr><th>IPv4 Backup Vlan Address :</th><td>Not Assigned</td></tr>
+                        <tr><th>IPv4 Backup Vlan Bitmask :</th><td>Not Assigned</td></tr>
+                    {% endif %}
+                    {% if fndVlanBckUp != 0 and fndBkp != 0 %}
+                        <tr><th>Backup Vlan Tag :</th><td>Not Assigned</td></tr>
+                    {% endif %}
+                    {% if fndMulticast != 0 %}
+                        <tr><th>IPv4 Multicast Vlan Address :</th><td>Not Assigned</td></tr>
+                        <tr><th>IPv4 Multicast Vlan Bitmask :</th><td>Not Assigned</td></tr>
+                    {% endif %}
+                    {% if fndVlanMulticast != 0 and fndMulticast != 0 %}
+                        <tr><th>Multicast Vlan Tag :</th><td>Not Assigned</td></tr>
+                    {% endif %}
+                {% endif %}
+           {% endfor %}
+	   {% if iloAddress and  iloAddress != "None" %}
+              <tr><th class="header">ILO Address :</th><td><a href="http://{{ iloAddress }}/">{{ iloAddress }}</a></td></tr>
+           {% endif %}
+       </table>
+    {% endif %}
+    <br>
+        <h3>Clusters Associated with {{ selected }}
+            <a class="img" href="http://confluence-oss.lmera.ericsson.se/display/CIOSS/Register+a+Cluster" title="Register Cluster Help" target="_blank"><img src="/static/images/question.png"/></a>
+            <a class="img" href="/dmt/addcluster/" title="Register A Cluster"><img src="/static/images/create.png"/></a>
+        </h3>
+        {% if clusters %}
+        <table id="managementServer-clusters-table">
+            <tr>
+                <th>Name</th>
+                <th>Cluster ID</th>
+            </tr>
+           {% for c in clusters %}
+            <tr>
+                <td><a href="/dmt/clusters/{{ c.id }}/">{{ c.name }}</a></td>
+                <td>{{ c.id}}</td>
+            </tr>
+           {% endfor %}
+       </table>
+        {% endif %}
+        </div>
+    </div>
+{% endif %}
+{% endblock %}
